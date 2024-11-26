@@ -1,0 +1,158 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+ @* <div class="text-center">
+     <h1 class="display-4">Welcome</h1>
+     <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+ </div>
+ *@
+
+
+@model List<OrganizationalApp.Models.Entities.Users>
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Organizational Chart - Tree Layout</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        #org-chart {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+            position: relative;
+        }
+
+        .chart-row {
+            display: flex;
+            justify-content: space-evenly;
+            margin: 60px 0;
+            position: relative;
+        }
+
+        .chart-box {
+            width: 200px;
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: white;
+            position: relative;
+        }
+
+            .chart-box img {
+                height: 90px;
+                width: 90px;
+                border-radius: 50%;
+                border: 4px solid black;
+            }
+
+        .avatar {
+            margin-bottom: 10px;
+        }
+
+        /* SVG Container for Connecting Lines */
+        #svg-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+    </style>
+</head>
+<body>
+    <div id="org-chart">
+        <svg id="svg-container"></svg>
+        @foreach (var levelGroup in Model.GroupBy(u => u.Level))
+        {
+            <div class="chart-row">
+                @foreach (var user in levelGroup)
+                {
+                    <div class="chart-box" style="border-top: 10px solid @(GetColorByLevel(user.Level));"
+                         id="box-@user.Code"
+                         data-code="@user.Code"
+                         data-fk-code="@user.FkCode">
+                        <div class="avatar">
+                            <img style="height:90px;width:90px;border-radius:50%;border:5px solid black;margin-top: -50%;" src="~/css/default-user.png" />
+                        </div>
+                        <h5>@user.Name</h5>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const svgContainer = document.getElementById("svg-container");
+            const orgChart = document.getElementById("org-chart");
+            const boxes = Array.from(document.querySelectorAll(".chart-box"));
+
+            // Adjust the SVG size dynamically to match the chart dimensions
+            svgContainer.setAttribute("width", orgChart.scrollWidth);
+            svgContainer.setAttribute("height", orgChart.scrollHeight);
+
+            boxes.forEach(box => {
+                const code = box.getAttribute("data-code");
+                const fkCode = box.getAttribute("data-fk-code");
+
+                if (fkCode) {
+                    const targetBox = boxes.find(b => b.getAttribute("data-code") === fkCode);
+                    if (targetBox) {
+                        drawLine(svgContainer, targetBox, box);
+                    }
+                }
+            });
+
+            function drawLine(svg, fromBox, toBox) {
+                const svgNS = "http://www.w3.org/2000/svg";
+
+                // Get bounding rectangles for both boxes
+                const fromRect = fromBox.getBoundingClientRect();
+                const toRect = toBox.getBoundingClientRect();
+
+                // Get the parent container's bounding rectangle for accurate positioning
+                const chartRect = orgChart.getBoundingClientRect();
+
+                // Calculate the start and end points relative to the chart container
+                const startX = fromRect.left + fromRect.width / 2 - chartRect.left;
+                const startY = fromRect.bottom - chartRect.top;
+                const endX = toRect.left + toRect.width / 2 - chartRect.left;
+                const endY = toRect.top - chartRect.top;
+
+                // Create an SVG line element
+                const line = document.createElementNS(svgNS, "line");
+                line.setAttribute("x1", startX);
+                line.setAttribute("y1", startY);
+                line.setAttribute("x2", endX);
+                line.setAttribute("y2", endY);
+                line.setAttribute("stroke", "black");
+                line.setAttribute("stroke-width", "2");
+
+                svg.appendChild(line);
+            }
+        });
+    </script>
+
+    @functions {
+        string GetColorByLevel(int level)
+        {
+            var colors = new[] { "blue", "orange", "green" };
+            return colors[(level - 1) % colors.Length];
+        }
+    }
+</body>
+</html>
